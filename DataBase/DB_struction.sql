@@ -34,3 +34,7 @@ use performance_analysis_db;
 -- UPDATE orders SET total_price = 
 -- (SELECT SUM(order_detail.quantity * order_detail.unit_price) FROM order_detail 
 -- WHERE order_detail.order_id = orders.order_id);
+
+-- ALTER TABLE performance_log
+-- ADD COLUMN explain_analyze_result LONGTEXT NOT NULL
+-- AFTER explain_result;
