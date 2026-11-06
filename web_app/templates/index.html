@@ -49,22 +49,22 @@
           <div class="kpi_container">
             <div class="kpi_card total">
               <p>Total Experiment</p>
-              <h3>--</h3>
+              <h3>{{ total_experiments_count }}</h3>
             </div>
 
             <div class="kpi_card conditions">
               <p>Query Conditions</p>
-              <h3>--</h3>
+              <h3>{{ total_conditions_count }}</h3>
             </div>
 
             <div class="kpi_card tests">
               <p>Performance Tests</p>
-              <h3>--</h3>
+              <h3>{{ total_performance_tests_count }}</h3>
             </div>
 
             <div class="kpi_card indexed">
               <p>Indexed Conditions</p>
-              <h3>--</h3>
+              <h3>{{ total_indexed_conditions_count }}</h3>
             </div>
           </div>
 
@@ -75,7 +75,19 @@
             </div>
 
             <div class="chart_container">
-              <p>Performance Chart</p>
+              <div id="performance_chart"></div>
+              <div class="improvement_list">
+                {% for rate in improvement %}
+                <div class="improvement_item">
+                  <p>Query {{ loop.index }} · 성능 개선율</p>
+                  <h3>
+                    {% if rate is not none %} {{ "%.2f"|format(rate) }}% {% else
+                    %} 측정 불가 {% endif %}
+                  </h3>
+                  <span>인덱스 적용 후 평균 실행 시간 감소율</span>
+                </div>
+                {% endfor %}
+              </div>
             </div>
           </div>
 
@@ -96,21 +108,23 @@
                 </thead>
 
                 <tbody>
+                  {% for row in experiment_info %}
                   <tr>
-                    <td>Product Category Search</td>
-                    <td><span class="status completed">Completed</span></td>
-                    <td>2026-11-04</td>
+                    <td>{{ row[1] }}</td>
+                    {% if row[5] == 'Completed' %}
+                    <td><span class="status completed">{{ row[5] }}</span></td>
+                    {% elif row[5] == 'In Progress' %}
+                    <td>
+                      <span class="status in-progress">{{ row[5] }}</span>
+                    </td>
+                    {% else %}
+                    <td>
+                      <span class="status not-started">{{ row[5] }}</span>
+                    </td>
+                    {% endif %}
+                    <td>{{ row[2] }}</td>
                   </tr>
-                  <tr>
-                    <td>Product Price Search</td>
-                    <td><span class="status completed">Completed</span></td>
-                    <td>2026-11-03</td>
-                  </tr>
-                  <tr>
-                    <td>Customer Order JOIN</td>
-                    <td><span class="status completed">Completed</span></td>
-                    <td>2026-11-02</td>
-                  </tr>
+                  {% endfor %}
                 </tbody>
               </table>
             </div>
@@ -118,5 +132,14 @@
         </div>
       </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script>
+      window.chartData = {
+        labels: {{ labels | tojson }},
+        before: {{ before | tojson }},
+        after: {{ after | tojson }}
+      };
+    </script>
+    <script src="{{ url_for('static', filename='chart.js') }}"></script>
   </body>
 </html>
