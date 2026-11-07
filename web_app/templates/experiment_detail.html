@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">PERFORMANCE <span>LAB</span></div>
+
+            <div class="workspace_menu">
+                <p>WORKSPACE</p>
+                <a href="#">Dashboard</a>
+                <a href="#" class="active">Experiments</a>
+                <a href="#">Performance Analysis</a>
+            </div>
+
+            <div class="system_menu">
+                <p>SYSTEM</p>
+                <a href="#">Settings</a>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="top_header">
+                <div class="page_title">
+                    <h1>Experiment Detail</h1>
+                    <p>MySQL Performance Monitoring</p>
+                </div>
+
+                <div class="header_info">
+                    <p>2026. 11. 04.</p>
+                    <span>● System Ready</span>
+                </div>
+            </div>
+            <div class="main_content">
+                <div class="experiment_detail_content">
+                    <h2>Experiment Detail Information</h2>
+                    <h3>{{ experiment_detail_info[1] }}</h3>
+                    <p>{{ experiment_detail_info[2] }}</p>
+                </div>
+                <div class="query_content">
+                    <h2>SQL Query</h2>
+                    {% for i in query_info %}
+                        <p>Query {{ i[0] }}</p>
+                        <pre><code>{{ i[2] }}</code></pre>
+                    {% endfor %}
+                </div>
+
+                <div class="performance_result">
+                    {% for query_id, data in result_data.items() %}
+                        <h3>{{ query_id }}</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>구분</th>
+                                    <th>평균 실행 시간</th>
+                                    <th>중앙값</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span>Before</span></td>
+                                    <td><span>
+                                        {{ "%.2f"|format(data["before"]["average"]) }} ms 
+                                    </span></td>
+                                    <td><span>
+                                        {{ "%.2f"|format(data["before"]["median"]) }} ms
+                                    </span></td>
+                                </tr>
+                                <tr>
+                                    <td><span>After</span></td>
+                                    <td><span>
+                                        {{ "%.2f"|format(data["after"]["average"]) }} ms 
+                                    </span></td>
+                                    <td><span>
+                                        {{ "%.2f"|format(data["after"]["median"]) }} ms
+                                    </span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

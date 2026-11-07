@@ -97,6 +97,17 @@
               <p>Recently registered performance experiments</p>
             </div>
 
+            <div class="experiment_list">
+              <form method="GET">
+                <select name="experiment_id">
+                  {% for list in get_experiment_id_name %}
+                  <option value="{{ list[0] }}" {% if list[0] == experiment_id %}selected{% endif %}>{{ list[1] }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit">조회</button>
+              </form>
+            </div>
+
             <div class="table_container">
               <table>
                 <thead>
@@ -110,7 +121,11 @@
                 <tbody>
                   {% for row in experiment_info %}
                   <tr>
-                    <td>{{ row[1] }}</td>
+                    <td>
+                      <a href="{{ url_for('experiment_detail', experiment_id=row[0]) }}">
+                        {{ row[1] }}
+                      </a>
+                    </td>
                     {% if row[5] == 'Completed' %}
                     <td><span class="status completed">{{ row[5] }}</span></td>
                     {% elif row[5] == 'In Progress' %}

@@ -225,6 +225,66 @@ body {
   margin-top: 35px;
 }
 
+.experiment_list {
+    display: flex;
+    justify-content: flex-end;
+    margin: 20px 0;
+}
+
+.experiment_list form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.experiment_list select {
+    width: 260px;
+    padding: 11px 14px;
+    background-color: #1E293B;
+    color: #F8FAFC;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.experiment_list select:hover {
+    border-color: #38BDF8;
+}
+
+.experiment_list select:focus {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.experiment_list select option {
+    background-color: #1E293B;
+    color: #F8FAFC;
+}
+
+.experiment_list button {
+    padding: 11px 22px;
+    background-color: #2563EB;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.experiment_list button:hover {
+    background-color: #3B82F6;
+    transform: translateY(-1px);
+}
+
+.experiment_list button:active {
+    transform: translateY(0);
+}
+
 .table_container {
   background-color: #1e293b;
   border: 1px solid #334155;
@@ -245,6 +305,8 @@ td {
   text-align: left;
   border-bottom: 1px solid #334155;
 }
+
+
 
 th {
   color: #cbd5e1;
@@ -272,4 +334,140 @@ th {
 .status.not-started {
   background-color: #334155;
   color: #cbd5e1;
+}
+
+/* experiment_detail.html */
+.experiment_detail_content {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  padding: 25px;
+  border-radius: 12px;
+
+}
+
+.experiment_detail_content h2 {
+  color: #f8fafc;
+  font-size: 20px;
+  margin-bottom: 15px;
+  margin-top: 0;
+}
+
+.experiment_detail_content h3 {
+  color: #f8fafc;
+  font-size: 24px;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.experiment_detail_content p {
+  color: #94a3b8;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.query_content {
+    background-color: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 20px;
+}
+
+.query_content h2 {
+    color: #F8FAFC;
+    font-size: 20px;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.query_content p {
+    color: #38BDF8;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.query_content pre {
+    background-color: #0F172A;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 0;
+    margin-bottom: 25px;
+    overflow-x: auto;
+}
+
+.query_content code {
+    color: #E2E8F0;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre;
+}
+
+.query_content pre:last-child {
+    margin-bottom: 0;
+}
+
+.performance_result {
+    margin-top: 25px;
+    padding: 25px;
+    background-color: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 12px;
+}
+
+.performance_result h3 {
+    color: #F8FAFC;
+    font-size: 18px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+.performance_result h3:first-child {
+    margin-top: 0;
+}
+
+.performance_result table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.performance_result thead {
+    background-color: #0F172A;
+}
+
+.performance_result th {
+    color: #94A3B8;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 15px;
+    border-bottom: 1px solid #334155;
+}
+
+.performance_result td {
+    color: #E2E8F0;
+    font-size: 14px;
+    padding: 16px;
+    border-bottom: 1px solid #334155;
+}
+
+.performance_result tbody tr:first-child td:first-child {
+    color: #94A3B8;
+    font-weight: 600;
+}
+
+.performance_result tbody tr:last-child td:first-child {
+    color: #38BDF8;
+    font-weight: 600;
+}
+
+.performance_result tbody tr:hover {
+    background-color: #263449;
+}
+
+.performance_result tbody tr:last-child td {
+    border-bottom: none;
 }
