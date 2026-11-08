@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">PERFORMANCE <span>LAB</span></div>
+
+            <div class="workspace_menu">
+                <p>WORKSPACE</p>
+                <a href="{{ url_for('index') }}">Dashboard</a>
+                <a href="{{ url_for('experiments') }}" class="active">Experiments</a>
+                <a href="{{ url_for('performance_analysis') }}">Performance Analysis</a>
+            </div>
+
+            <div class="system_menu">
+                <p>SYSTEM</p>
+                <a href="#">Settings</a>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="top_header">
+                <div class="page_title">
+                    <h1>Experiments</h1>
+                    <p>MySQL Performance Monitoring</p>
+                </div>
+
+                <div class="header_info">
+                    <p>2026. 11. 04.</p>
+                    <span>● System Ready</span>
+                </div>
+            </div>
+
+            <div class="main_content">
+                <div class="experiments_list">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>실험 ID</th>
+                                <th>실험 이름</th>
+                                <th>설명</th>
+                                <th>생성 날짜</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in experiments_info_data %}
+                            <tr>
+                                <td>{{ i[0] }}</td>
+                                <td>
+                                    <a href=
+                                    "{{ url_for('experiment_detail', experiment_id=i[0]) }}">
+                                    {{ i[1] }}
+                                    </a>
+                                </td>
+                                <td>{{ i[2] }}</td>
+                                <td>{{ i[3] }}</td>
+                            </tr>    
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>

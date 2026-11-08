@@ -3,6 +3,7 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from Automation import db_connection
 import statistics
+import json
 
 total_experiments_sql = """select count(*) from experiment;"""
 query_conditions_sql = """select count(*) from index_condition;"""
@@ -124,6 +125,16 @@ inner join experiment on query_history.experiment_id = experiment.experiment_id
 where experiment.experiment_id = %s 
 order by query_history.query_id, is_indexed, repeat_number;"""
 
+explain_result_sql = """select experiment.experiment_id, query_history.query_id, 
+index_condition.condition_id, index_condition.is_indexed, 
+performance_log.explain_result, performance_log.explain_analyze_result
+from performance_log
+inner join index_condition on performance_log.condition_id = index_condition.condition_id
+inner join query_history on index_condition.query_id = query_history.query_id
+inner join experiment on query_history.experiment_id = experiment.experiment_id
+where experiment.experiment_id = %s and performance_log.repeat_number = 1
+order by query_history.query_id, is_indexed;"""
+
 @app.route("/experiment/<int:experiment_id>")
 def experiment_detail(experiment_id):
     conn = None
@@ -142,6 +153,11 @@ def experiment_detail(experiment_id):
 
         cursor.execute(before_after_index_sql, (experiment_detail_info_vals,))
         before_after_index_info = cursor.fetchall()
+
+        cursor.execute(explain_result_sql, (experiment_detail_info_vals,))
+        explain_result_info = cursor.fetchall()
+
+        print(explain_result_info)
 
         before_after_data = {}
         for i in before_after_index_info:
@@ -166,27 +182,102 @@ def experiment_detail(experiment_id):
             if query_id not in result_data:
                 result_data[query_id] = {
                     "before": {
+                        "times": [],
                         "average": None,
                         "median" : None
                     },
                     "after": {
+                        "times": [],
                         "average": None,
                         "median" : None
                     }
                 }
-            
+            result_data[query_id]["before"]["times"] = data["before"]
             result_data[query_id]["before"]["average"] = before_average_actual_time
             result_data[query_id]["before"]["median"] = before_median_actual_time
-            
+
+            result_data[query_id]["after"]["times"] = data["after"]
             result_data[query_id]["after"]["average"] = after_average_actual_time
             result_data[query_id]["after"]["median"] = after_median_actual_time
 
+        explain_result_data = {}
+        explain_columns = [
+            "id", "select_type", "table", "partitions",
+            "type", "possible_keys", "key", "key_len",
+            "ref", "rows", "filtered", "Extra"
+        ]
+        for t in explain_result_info:
+            explain_query_id = "Query " + str(t[1]) 
+            if explain_query_id not in explain_result_data:
+                explain_result_data[explain_query_id] = {
+                    "before": {
+                        "explain": None,
+                        "explain_analyze": None
+                    },
+                    "after": {
+                        "explain": None,
+                        "explain_analyze": None
+                    }
+                }
+            explain_rows = json.loads(t[4])
+
+            explain_data = [
+                dict(zip(explain_columns, row))
+                for row in explain_rows
+            ]
+            
+            explain_analyze_data = json.loads(t[5])[0][0]
+
+            if t[3] == 0:
+                explain_result_data[explain_query_id]["before"]["explain"] = explain_data
+                explain_result_data[explain_query_id]["before"]["explain_analyze"] = explain_analyze_data
+            else:
+                explain_result_data[explain_query_id]["after"]["explain"] = explain_data
+                explain_result_data[explain_query_id]["after"]["explain_analyze"] = explain_analyze_data
     finally:
         if cursor is not None:
             cursor.close()
         if conn is not None:
             conn.close()
-    return render_template("experiment_detail.html", experiment_detail_info = experiment_detail_info, query_info = query_info, before_after_index_info = before_after_index_info, result_data = result_data)
+    return render_template("experiment_detail.html", experiment_detail_info = experiment_detail_info, query_info = query_info, result_data = result_data, explain_result_data = explain_result_data)
+
+experiments_info_sql = """select experiment.experiment_id, experiment.experiment_name,
+experiment.description, experiment.created_at 
+from experiment
+order by experiment.created_at desc;"""
+
+@app.route("/experiments")
+def experiments():
+    conn = None
+    cursor = None
+    try:
+        conn = db_connection.get_db_connection_analysis()
+        cursor = conn.cursor()
+
+        cursor.execute(experiments_info_sql)
+        experiments_info_data = cursor.fetchall()
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
+    return render_template("experiments.html", experiments_info_data = experiments_info_data)
+
+@app.route("/performance-analysis")
+def performance_analysis():
+    conn = None
+    cursor = None
+    try:
+        conn = db_connection.get_db_connection_analysis()
+        cursor = conn.cursor()
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
+
+    return render_template("performance_analysis.html")
+
 
 if __name__ == "__main__":
     app.run(debug=True)

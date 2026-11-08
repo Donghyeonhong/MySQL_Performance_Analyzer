@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">PERFORMANCE <span>LAB</span></div>
+
+            <div class="workspace_menu">
+                <p>WORKSPACE</p>
+                <a href="{{ url_for('index') }}">Dashboard</a>
+                <a href="{{ url_for('experiments') }}">Experiments</a>
+                <a href="{{ url_for('performance_analysis') }}" class="active">Performance Analysis</a>
+            </div>
+
+            <div class="system_menu">
+                <p>SYSTEM</p>
+                <a href="#">Settings</a>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="top_header">
+                <div class="page_title">
+                    <h1>Performance Analysis</h1>
+                    <p>MySQL Performance Monitoring</p>
+                </div>
+
+                <div class="header_info">
+                    <p>2026. 11. 04.</p>
+                    <span>● System Ready</span>
+                </div>
+            </div>
+
+            <div class="main_content">
+                <div class="analysis_overview">
+                    <div class="analysis_kpi_container">
+                        <div class="analysis_kpi_card total">
+                            <p>Total Experiments</p>
+                            <h3>3</h3>
+                            <span>전체 실험 수</span>
+                        </div>
+
+                        <div class="analysis_kpi_card avg_improvement">
+                            <p>Avg Improvement</p>
+                            <h3>29.1%</h3>
+                            <span>평균 성능 개선율</span>
+                        </div>
+
+                        <div class="analysis_kpi_card best_improvement">
+                            <p>Best Improvement</p>
+                            <h3>42.8%</h3>
+                            <span>가장 높은 개선율</span>
+                        </div>
+
+                        <div class="analysis_kpi_card analyzed_queries">
+                            <p>Analyzed Queries</p>
+                            <h3>3</h3>
+                            <span>분석 완료된 쿼리 수</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analysis_chart">
+                    <div class="analysis_chart_section_title">
+                        <h2>Query Performance Comparison</h2>
+                        <p>Average execution time before and after indexing</p>
+                    </div>
+                    <div class="analysis_chart_container">
+                        <div id="analysis_performance_chart"></div>
+                    </div>
+                </div>
+
+                <div class="analysis_summary">
+                    <div class="analysis_summary_title">
+                        <h2>Experiment Performance Summary</h2>
+                        <p>Detailed performance comparison of all experiments and queries</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Experiment</th>
+                                <th>Query</th>
+                                <th>Before (ms)</th>
+                                <th>After (ms)</th>
+                                <th>Improvement</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in ex %}
+                                <tr>
+                                    <td>실험이름</td>
+                                    <td>쿼리 ID</td>
+                                    <td>인덱스 적용 전 평균</td>
+                                    <td>인덱스 적용 후 평균</td>
+                                    <td>성능 개선율</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="analysis_insights">
+                    <div class="analysis_insights_title">
+                        <h2>Performance Insights</h2>
+                        <p>Key findings from MySQL query performance analysis</p>
+                    </div>
+
+                    <div class="analysis_kpi_container">
+                        <div class="analysis_kpi_card improved">
+                            <p>Improved Queries</p>
+                            <h3>3</h3>
+                            <span>인덱스 적용 후 빨라진 쿼리 수</span>
+                        </div>
+
+                        <div class="analysis_kpi_card regressed">
+                            <p>Regressed Queries</p>
+                            <h3>0</h3>
+                            <span>인덱스 적용 후 느려진 쿼리 수</span>
+                        </div>
+
+                        <div class="analysis_kpi_card no_change">
+                            <p>No Change Queries</p>
+                            <h3>1</h3>
+                            <span>실행 시간이 동일한 쿼리 수</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

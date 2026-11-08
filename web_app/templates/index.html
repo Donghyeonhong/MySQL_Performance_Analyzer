@@ -16,9 +16,9 @@
 
         <div class="workspace_menu">
           <p>WORKSPACE</p>
-          <a href="#" class="active">Dashboard</a>
-          <a href="#">Experiments</a>
-          <a href="#">Performance Analysis</a>
+          <a href="{{ url_for('index') }}" class="active">Dashboard</a>
+          <a href="{{ url_for('experiments') }}">Experiments</a>
+          <a href="{{ url_for('performance_analysis') }}">Performance Analysis</a>
         </div>
 
         <div class="system_menu">
