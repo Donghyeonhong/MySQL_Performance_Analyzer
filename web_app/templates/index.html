@@ -79,9 +79,9 @@
               <div class="improvement_list">
                 {% for rate in improvement %}
                 <div class="improvement_item">
-                  <p>Query {{ loop.index }} · 성능 개선율</p>
+                  <p>{{ rate.query_id }} · Condition {{ rate.condition_id }} 성능 개선율</p>
                   <h3>
-                    {% if rate is not none %} {{ "%.2f"|format(rate) }}% {% else
+                    {% if rate.rate is not none %} {{ "%.2f"|format(rate.rate) }}% {% else
                     %} 측정 불가 {% endif %}
                   </h3>
                   <span>인덱스 적용 후 평균 실행 시간 감소율</span>

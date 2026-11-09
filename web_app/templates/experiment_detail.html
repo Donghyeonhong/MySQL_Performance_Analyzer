@@ -71,15 +71,17 @@
                                         {{ "%.2f"|format(data["before"]["median"]) }} ms
                                     </span></td>
                                 </tr>
+                                {% for condition_id, after in data["after"].items() %}
                                 <tr>
-                                    <td><span>After</span></td>
+                                    <td><span>After (Condition {{ condition_id }})</span></td>
                                     <td><span>
-                                        {{ "%.2f"|format(data["after"]["average"]) }} ms 
+                                        {{ "%.2f"|format(after["average"]) }} ms 
                                     </span></td>
                                     <td><span>
-                                        {{ "%.2f"|format(data["after"]["median"]) }} ms
+                                        {{ "%.2f"|format(after["median"]) }} ms
                                     </span></td>
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     {% endfor %}
@@ -107,14 +109,16 @@
                                         </span></td>
                                     {% endfor %}
                                 </tr>
+                                {% for condition_id, after in data["after"].items() %}
                                 <tr>
-                                    <td><span>After</span></td>
-                                    {% for a in data["after"]["times"] %}
+                                    <td><span>After (Condition {{ condition_id }})</span></td>
+                                    {% for a in after["times"] %}
                                         <td><span>
                                             {{ "%.2f"|format(a) }} ms
                                         </span></td>
                                     {% endfor %}
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     {% endfor %}
@@ -191,69 +195,73 @@
                         </div>
 
                         <div class="after_explain_result">
-                            <h4>After</h4>
-                            <h5>EXPLAIN</h5>
-                            {% for row in data["after"]["explain"] %}
-                                <div class="explain_table">
-                                    <h6>{{ row["table"] }}</h6>
+                            {% for condition_id, after in data["after"].items() %}
+                                <div class="after_explain_condition">
+                                    <h4>After (Condition {{ condition_id }})</h4>
+                                    <h5>EXPLAIN</h5>
+                                    {% for row in after["explain"] %}
+                                        <div class="explain_table">
+                                            <h6>{{ row["table"] }}</h6>
 
-                                    <div class="explain_info">
-                                        <div>
-                                            <span>접근 방식 (type)</span>
-                                            <p>{{ row["type"] }}</p>
-                                        </div>
-                                        <div>
-                                            <span>선택 인덱스 (key)</span>
-                                            <p>{{ row["key"] or "없음" }}</p>
-                                        </div>
-                                        <div>
-                                            <span>예상 행 수 (rows)</span>
-                                            <p>{{ row["rows"] }}</p>
-                                        </div>
-                                        <div>
-                                            <span>필터 비율 (filtered)</span>
-                                            <p>{{ row["filtered"] }}%</p>
-                                        </div>
-                                    </div>
+                                            <div class="explain_info">
+                                                <div>
+                                                    <span>접근 방식 (type)</span>
+                                                    <p>{{ row["type"] }}</p>
+                                                </div>
+                                                <div>
+                                                    <span>선택 인덱스 (key)</span>
+                                                    <p>{{ row["key"] or "없음" }}</p>
+                                                </div>
+                                                <div>
+                                                    <span>예상 행 수 (rows)</span>
+                                                    <p>{{ row["rows"] }}</p>
+                                                </div>
+                                                <div>
+                                                    <span>필터 비율 (filtered)</span>
+                                                    <p>{{ row["filtered"] }}%</p>
+                                                </div>
+                                            </div>
 
-                                    <div class="explain_extra">
-                                        <h6>상세 실행 계획 정보</h6>
+                                            <div class="explain_extra">
+                                                <h6>상세 실행 계획 정보</h6>
 
-                                        <div class="explain_detail_info">
-                                            <div>
-                                                <span>SELECT ID (id)</span>
-                                                <p>{{ row["id"] }}</p>   
-                                            </div>
-                                            <div>
-                                                <span>SELECT 유형 (select_type)</span>
-                                                <p>{{ row["select_type"] }}</p>
-                                            </div>
-                                            <div>
-                                                <span>파티션 (partitions)</span>
-                                                <p>{{ row["partitions"] or "없음" }}</p>
-                                            </div>
-                                            <div>
-                                                <span>인덱스 길이 (key_len)</span>
-                                                <p>{{ row["key_len"] or "없음" }}</p>
-                                            </div>
-                                            <div>
-                                                <span>참조 값 (ref)</span>
-                                                <p>{{ row["ref"] or "없음" }}</p>
-                                            </div>
-                                            <div>
-                                                <span>가능한 인덱스 (possible_keys)</span>
-                                                <p>{{ row["possible_keys"] or "없음" }}</p>
+                                                <div class="explain_detail_info">
+                                                    <div>
+                                                        <span>SELECT ID (id)</span>
+                                                        <p>{{ row["id"] }}</p>   
+                                                    </div>
+                                                    <div>
+                                                        <span>SELECT 유형 (select_type)</span>
+                                                        <p>{{ row["select_type"] }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span>파티션 (partitions)</span>
+                                                        <p>{{ row["partitions"] or "없음" }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span>인덱스 길이 (key_len)</span>
+                                                        <p>{{ row["key_len"] or "없음" }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span>참조 값 (ref)</span>
+                                                        <p>{{ row["ref"] or "없음" }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span>가능한 인덱스 (possible_keys)</span>
+                                                        <p>{{ row["possible_keys"] or "없음" }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="explain_extra_status">
+                                                    <span>추가 정보 (Extra)</span>
+                                                    <p>{{ row["Extra"] or "없음" }}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="explain_extra_status">
-                                            <span>추가 정보 (Extra)</span>
-                                            <p>{{ row["Extra"] or "없음" }}</p>
-                                        </div>
-                                    </div>
+                                    {% endfor %}
+                                    <h5>EXPLAIN ANALYZE</h5>
+                                    <pre><code>{{ after["explain_analyze"] }}</code></pre>
                                 </div>
                             {% endfor %}
-                            <h5>EXPLAIN ANALYZE</h5>
-                            <pre><code>{{ data["after"]["explain_analyze"] }}</code></pre>
                         </div>
                     {% endfor %}
                 </div>

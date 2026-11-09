@@ -22,13 +22,14 @@ left join index_condition on query_history.query_id = index_condition.query_id
 left join performance_log on index_condition.condition_id = performance_log.condition_id 
 group by experiment.experiment_id order by created_at desc limit 5;"""
 
-average_actual_time_sql = """select experiment.experiment_id, query_history.query_id, index_condition.is_indexed, avg(performance_log.execution_time) as avg_execution_time 
+average_actual_time_sql = """select experiment.experiment_id, query_history.query_id, index_condition.condition_id, index_condition.is_indexed, 
+avg(performance_log.execution_time) as avg_execution_time 
 from experiment
 inner join query_history on experiment.experiment_id = query_history.experiment_id
 inner join index_condition on query_history.query_id = index_condition.query_id
 inner join performance_log on index_condition.condition_id = performance_log.condition_id
 where experiment.experiment_id = %s
-group by experiment.experiment_id, query_history.query_id, index_condition.is_indexed; 
+group by experiment.experiment_id, query_history.query_id, index_condition.condition_id, index_condition.is_indexed; 
 """ 
 
 experiment_list_sql = """select experiment_id, experiment_name from experiment order by created_at desc;"""
@@ -73,36 +74,56 @@ def index():
         
         for row in average_actual_time:
             query_id = "Query " + str(row[1])
-
+    
             if query_id not in chart_data:
                 chart_data[query_id] = {
                     "before": None,
-                    "after": None
+                    "after": []
                 }
-            if row[2] == 0:
-                chart_data[query_id]["before"] = row[3]
+            
+            if row[3] == 0:
+                chart_data[query_id]["before"] = row[4]
             else:
-                chart_data[query_id]["after"] = row[3]
+                chart_data[query_id]["after"].append({
+                    "condition_id": row[2],
+                    "execution_time": row[4]
+                })
         labels = list(chart_data.keys())
         before = []
-        after = []
+        after = {}
         improvement = []
+        condition_ids = set()
+
         for data in chart_data.values():
             before.append(float(data['before']))
-            after.append(float(data['after']))
+            for e in data['after']:
+                condition_ids.add(e["condition_id"])
+                
+        for condition_id in condition_ids:
+            after[condition_id] = [None] * len(labels)
 
-        for i in range(len(before)):
-            if before[i] != 0:
-                rate = ((before[i] - after[i]) / before[i]) * 100
-                improvement.append(rate)
-            else:
-                rate = None
-                improvement.append(rate)
+        for query_index, data in enumerate(chart_data.values()):
+            for e in data["after"]:
+                after[e["condition_id"]][query_index] = float(e["execution_time"])
+
+        for query_id, data in chart_data.items():
+            before_time = float(data["before"])
+            for t in data["after"]:
+                condition_id = t["condition_id"]
+                execution_time = float(t["execution_time"])
+                if before_time != 0:
+                    rate = ((before_time - execution_time) / before_time) * 100
+                else:
+                    rate = None
+
+                improvement.append({
+                    "query_id": query_id,
+                    "condition_id": condition_id,
+                    "rate": rate
+                })
         print(chart_data)    
         print(average_actual_time)
 
-
-        
     finally:
         
         if cursor is not None:
@@ -165,19 +186,33 @@ def experiment_detail(experiment_id):
             if query_id not in before_after_data:
                 before_after_data[query_id] = {
                     "before": [],
-                    "after": []
+                    "after": {}
                 }
             if i[3] == 0:
                 before_after_data[query_id]["before"].append(i[5])
             else:
-                before_after_data[query_id]["after"].append(i[5])
+                condition_id = i[2]
+                if condition_id not in before_after_data[query_id]["after"]:
+                    before_after_data[query_id]["after"][condition_id] = []
+
+                before_after_data[query_id]["after"][condition_id].append(i[5])
 
         result_data = {}
         for query_id, data in before_after_data.items():
             before_average_actual_time = statistics.mean(data["before"])
             before_median_actual_time = statistics.median(data["before"])
-            after_average_actual_time = statistics.mean(data["after"])
-            after_median_actual_time = statistics.median(data["after"])
+
+            after_result = {}
+
+            for condition_id, times in data["after"].items():
+                after_average_actual_time = statistics.mean(times)
+                after_median_actual_time = statistics.median(times)
+
+                after_result[condition_id] = {
+                    "times": times,
+                    "average": after_average_actual_time,
+                    "median": after_median_actual_time
+                }
 
             if query_id not in result_data:
                 result_data[query_id] = {
@@ -186,20 +221,14 @@ def experiment_detail(experiment_id):
                         "average": None,
                         "median" : None
                     },
-                    "after": {
-                        "times": [],
-                        "average": None,
-                        "median" : None
-                    }
+                    "after": {}
                 }
+
             result_data[query_id]["before"]["times"] = data["before"]
             result_data[query_id]["before"]["average"] = before_average_actual_time
             result_data[query_id]["before"]["median"] = before_median_actual_time
-
-            result_data[query_id]["after"]["times"] = data["after"]
-            result_data[query_id]["after"]["average"] = after_average_actual_time
-            result_data[query_id]["after"]["median"] = after_median_actual_time
-
+            result_data[query_id]["after"] = after_result
+        
         explain_result_data = {}
         explain_columns = [
             "id", "select_type", "table", "partitions",
@@ -214,10 +243,7 @@ def experiment_detail(experiment_id):
                         "explain": None,
                         "explain_analyze": None
                     },
-                    "after": {
-                        "explain": None,
-                        "explain_analyze": None
-                    }
+                    "after": {}
                 }
             explain_rows = json.loads(t[4])
 
@@ -232,8 +258,14 @@ def experiment_detail(experiment_id):
                 explain_result_data[explain_query_id]["before"]["explain"] = explain_data
                 explain_result_data[explain_query_id]["before"]["explain_analyze"] = explain_analyze_data
             else:
-                explain_result_data[explain_query_id]["after"]["explain"] = explain_data
-                explain_result_data[explain_query_id]["after"]["explain_analyze"] = explain_analyze_data
+                condition_id = t[2]
+                if condition_id not in explain_result_data[explain_query_id]["after"]:
+                    explain_result_data[explain_query_id]["after"][condition_id] = {
+                        "explain": None,
+                        "explain_analyze": None
+                    }
+                explain_result_data[explain_query_id]["after"][condition_id]["explain"] = explain_data
+                explain_result_data[explain_query_id]["after"][condition_id]["explain_analyze"] = explain_analyze_data
     finally:
         if cursor is not None:
             cursor.close()
@@ -263,6 +295,37 @@ def experiments():
             conn.close()
     return render_template("experiments.html", experiments_info_data = experiments_info_data)
 
+analyzed_queries_count_sql = """with condition_count as (
+	select index_condition.query_id, index_condition.condition_id, index_condition.is_indexed,
+	count(performance_log.log_id) as measurement_count, min(performance_log.repeat_number) as min_repeat, 
+    max(performance_log.repeat_number) as max_repeat
+	from index_condition
+	left join performance_log on index_condition.condition_id = performance_log.condition_id
+	group by index_condition.query_id, index_condition.condition_id, index_condition.is_indexed
+	),
+    
+	query_count as (
+	select query_id, sum(
+		case 
+			when is_indexed = 1 then 1
+			else 0
+		end
+		) a,
+		sum(
+		case
+			when is_indexed = 0 then 1
+			else 0
+		end
+		) b 
+	from condition_count
+	group by query_id 
+	having min(measurement_count) = 5 and max(measurement_count) = 5 and a >= 1 and b >= 1
+    and min(min_repeat) = 1 and max(min_repeat) = 1 and min(max_repeat) = 5 and max(max_repeat) = 5
+	)
+
+select count(*) from query_count;"""
+
+
 @app.route("/performance-analysis")
 def performance_analysis():
     conn = None
@@ -270,13 +333,20 @@ def performance_analysis():
     try:
         conn = db_connection.get_db_connection_analysis()
         cursor = conn.cursor()
+
+        cursor.execute(total_experiments_sql)
+        total_experiments_count = cursor.fetchone()[0]
+
+        cursor.execute(analyzed_queries_count_sql)
+        analyzed_queries_count = cursor.fetchone()[0]
+
     finally:
         if cursor is not None:
             cursor.close()
         if conn is not None:
             conn.close()
 
-    return render_template("performance_analysis.html")
+    return render_template("performance_analysis.html", total_experiments_count = total_experiments_count, analyzed_queries_count = analyzed_queries_count)
 
 
 if __name__ == "__main__":
