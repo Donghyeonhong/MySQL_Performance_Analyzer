@@ -36,8 +36,8 @@ def validate_index_info(table_name, index_name, index_columns):
 
 
 # 실험에 등록된 인덱스 전부 제거하는 함수
-def remove_experiment_indexes(cursor, indexed_conditions):
-    for condition in indexed_conditions:
+def remove_experiment_indexes(cursor, indexed_condition_rows):
+    for condition in indexed_condition_rows:
 
         table_name = condition[4]
         index_name = condition[5]
@@ -57,18 +57,18 @@ def remove_experiment_indexes(cursor, indexed_conditions):
 
 
 # 현재 조건에 해당하는 인덱스 적용하는 함수
-def apply_index_condition(cursor, condition):
-    is_indexed = condition[3]
-    table_name = condition[4]
-    index_name = condition[5]
-    index_columns = condition[6]
-
+def apply_index_condition(cursor, conditions):
+    if not conditions:
+        return
     # 인덱스 미적용 조건
-    if is_indexed == 0:
+    if conditions[0][3] == 0:
         return
 
     # 인덱스 적용 조건
-    if is_indexed == 1:
+    for condition in conditions:
+        table_name = condition[4]
+        index_name = condition[5]
+        index_columns = condition[6]
 
         quoted_columns = validate_index_info(
             table_name,

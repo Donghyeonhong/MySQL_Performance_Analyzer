@@ -178,8 +178,6 @@ def experiment_detail(experiment_id):
         cursor.execute(explain_result_sql, (experiment_detail_info_vals,))
         explain_result_info = cursor.fetchall()
 
-        print(explain_result_info)
-
         before_after_data = {}
         for i in before_after_index_info:
             query_id = "Query " + str(i[1])
@@ -295,7 +293,7 @@ def experiments():
             conn.close()
     return render_template("experiments.html", experiments_info_data = experiments_info_data)
 
-analyzed_queries_count_sql = """with condition_count as (
+cte_sql = """with condition_count as (
 	select index_condition.query_id, index_condition.condition_id, index_condition.is_indexed,
 	count(performance_log.log_id) as measurement_count, min(performance_log.repeat_number) as min_repeat, 
     max(performance_log.repeat_number) as max_repeat
@@ -321,10 +319,20 @@ analyzed_queries_count_sql = """with condition_count as (
 	group by query_id 
 	having min(measurement_count) = 5 and max(measurement_count) = 5 and a >= 1 and b >= 1
     and min(min_repeat) = 1 and max(min_repeat) = 1 and min(max_repeat) = 5 and max(max_repeat) = 5
-	)
+	)"""
 
-select count(*) from query_count;"""
+analyzed_queries_count_sql = cte_sql + """ select count(*) from query_count;"""
 
+avg_improvement_sql = cte_sql + """ select query_history.experiment_id, query_history.query_id, index_condition.condition_id, index_condition.is_indexed, 
+avg(performance_log.execution_time) as avg_execution_time 
+from query_count
+inner join query_history on query_count.query_id = query_history.query_id
+inner join index_condition on query_history.query_id = index_condition.query_id
+inner join performance_log on index_condition.condition_id = performance_log.condition_id
+group by query_history.experiment_id, query_history.query_id, 
+index_condition.condition_id,
+index_condition.is_indexed; 
+""" 
 
 @app.route("/performance-analysis")
 def performance_analysis():
@@ -340,14 +348,61 @@ def performance_analysis():
         cursor.execute(analyzed_queries_count_sql)
         analyzed_queries_count = cursor.fetchone()[0]
 
+        cursor.execute(avg_improvement_sql)
+        avg_improvement_data = cursor.fetchall()
+
+        improvement_rates = []
+        improvement_data = {}
+
+        for row in avg_improvement_data:
+            experiment_id = row[0]
+            query_id = row[1]
+            condition_id = row[2]
+            is_indexed = row[3]
+            execution_time = float(row[4])
+
+            key = (experiment_id, query_id)
+
+            if key not in improvement_data:
+                improvement_data[key] = {
+                    "before": None,
+                    "after": []
+                }
+
+            if is_indexed == 0:
+                improvement_data[key]["before"] = execution_time
+            else:
+                improvement_data[key]["after"].append(execution_time)
+
+        for data in improvement_data.values():
+            before_time = data["before"]
+
+            if before_time is None or before_time == 0:
+                continue
+
+            for after_time in data["after"]:
+                rate = ((before_time - after_time) / before_time) * 100
+                improvement_rates.append(rate)
+
+        if improvement_rates:
+            avg_improvement = sum(improvement_rates) / len(improvement_rates)
+            best_improvement = max(improvement_rates)
+        else:
+            avg_improvement = 0
+            best_improvement = 0
+
+
     finally:
         if cursor is not None:
             cursor.close()
         if conn is not None:
             conn.close()
 
-    return render_template("performance_analysis.html", total_experiments_count = total_experiments_count, analyzed_queries_count = analyzed_queries_count)
-
+    return render_template("performance_analysis.html", 
+    total_experiments_count = total_experiments_count, 
+    analyzed_queries_count = analyzed_queries_count, 
+    avg_improvement = avg_improvement, best_improvement = best_improvement, 
+    avg_improvement_data = avg_improvement_data)
 
 if __name__ == "__main__":
     app.run(debug=True)

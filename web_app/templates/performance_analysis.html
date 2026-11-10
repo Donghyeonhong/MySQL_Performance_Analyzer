@@ -48,13 +48,13 @@
 
                         <div class="analysis_kpi_card avg_improvement">
                             <p>Avg Improvement</p>
-                            <h3>29.1%</h3>
+                            <h3>{{ "%.1f"|format(avg_improvement) }}%</h3>
                             <span>평균 성능 개선율</span>
                         </div>
 
                         <div class="analysis_kpi_card best_improvement">
                             <p>Best Improvement</p>
-                            <h3>42.8%</h3>
+                            <h3>{{ "%.1f"|format(best_improvement) }}%</h3>
                             <span>가장 높은 개선율</span>
                         </div>
 
@@ -134,5 +134,11 @@
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <script>
+    const avgImprovementData = {{ avg_improvement_data | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='performance_analysis.js') }}"></script>
 </body>
 </html>

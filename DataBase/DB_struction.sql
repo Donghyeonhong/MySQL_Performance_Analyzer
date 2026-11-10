@@ -38,3 +38,36 @@ use performance_analysis_db;
 -- ALTER TABLE performance_log
 -- ADD COLUMN explain_analyze_result LONGTEXT NOT NULL
 -- AFTER explain_result;
+
+-- create table condition_index (
+-- 	index_id int unsigned not null primary key auto_increment,
+--     condition_id int unsigned not null,
+--     table_name varchar(100) not null,
+--     index_name varchar(100) not null, 
+--     index_columns varchar(255) not null,
+--     
+--     foreign key (condition_id) references index_condition(condition_id) on delete cascade
+-- )
+
+-- ALTER TABLE index_condition
+-- DROP CHECK index_condition_chk_2;
+
+-- ALTER TABLE index_condition
+-- DROP COLUMN table_name,
+-- DROP COLUMN index_name,
+-- DROP COLUMN index_columns;
+
+-- insert into condition_index (condition_id, table_name, index_name, index_columns)
+-- values (2, 'product', 'idx_product_category', 'category');
+
+-- insert into condition_index (condition_id, table_name, index_name, index_columns)
+-- values (4, 'product', 'idx_product_price', 'price');
+
+-- insert into condition_index (condition_id, table_name, index_name, index_columns)
+-- values (6, 'orders', 'idx_orders_customer_date', 'customer_id, order_date');
+
+-- insert into condition_index(condition_id, table_name, index_name, index_columns)
+-- values(6, 'orders', 'idx_orders_customer', 'customer_id');
+
+-- show create table index_condition;
+-- SHOW create table condition_index;
