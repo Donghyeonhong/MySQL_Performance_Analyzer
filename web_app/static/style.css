@@ -1030,3 +1030,306 @@ th {
     height: 300px;
   }
 }
+
+
+/* Toast 알림 */
+.flash-message {
+  position: fixed;
+  top: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  min-width: 280px;
+  padding: 18px 24px;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  animation: toast-animation 4s forwards;
+}
+
+.flash-message.success {
+  background-color: #16a34a;
+}
+
+.flash-message.error {
+  background-color: #dc2626;
+}
+
+@keyframes toast-animation {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+    visibility: hidden;
+  }
+}
+
+/* add_experiment 부분 */
+.experiment_form {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 700px;
+}
+
+.experiment_form h2 {
+  color: #f8fafc;
+  font-size: 22px;
+  margin-bottom: 25px;
+}
+
+.experiment_form .form_group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.experiment_form label {
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.experiment_form input,
+.experiment_form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  color: #f8fafc;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.experiment_form input:focus,
+.experiment_form textarea:focus {
+  border-color: #38bdf8;
+}
+
+.experiment_form textarea {
+  resize: vertical;
+}
+
+/* 실험생성 버튼 */
+.experiment_form button {
+  padding: 12px 22px;
+  background-color: #0d9488;
+  border: none;
+  border-radius: 7px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.experiment_form button:hover {
+  background-color: #0f766e;
+}
+
+/* 실험생성 페이지 이동 버튼 */
+.add_experiment_btn {
+  display: inline-block;
+  padding: 11px 18px;
+  background-color: #0d9488;
+  border-radius: 7px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.add_experiment_btn:hover {
+  background-color: #0f766e;
+}
+
+/* 쿼리 등록 영역 */
+.query_content .form_group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.query_content label {
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.query_content textarea {
+  width: 100%;
+  padding: 14px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  color: #f8fafc;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.query_content textarea:focus {
+  border-color: #38bdf8;
+}
+
+/* 쿼리 등록 버튼 */
+.query_content button {
+  padding: 11px 20px;
+  background-color: #0d9488;
+  border: none;
+  border-radius: 7px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.query_content button:hover {
+  background-color: #0f766e;
+}
+
+/* 인덱스 입력 항목과 선택창 */
+.index_condition_content .form_group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.index_condition_content label {
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.index_condition_content input,
+.index_condition_content select {
+  width: 100%;
+  padding: 12px 14px;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  color: #f8fafc;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.index_condition_content input:focus,
+.index_condition_content select:focus {
+  border-color: #38bdf8;
+}
+
+/* 인덱스 등록 버튼 */
+.index_condition_content form button {
+  padding: 11px 20px;
+  background-color: #0d9488;
+  border: none;
+  border-radius: 7px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.index_condition_content form button:hover {
+  background-color: #0f766e;
+}
+
+/* 등록된 인덱스 조건 목록 */
+.index_condition_list {
+  margin-top: 30px;
+  padding-top: 25px;
+  border-top: 1px solid #334155;
+}
+
+.index_condition_list h3 {
+  color: #f8fafc;
+  font-size: 17px;
+  margin-bottom: 18px;
+}
+
+.index_condition_item {
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 12px;
+}
+
+.index_condition_item h4 {
+  color: #38bdf8;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.index_condition_item p {
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 5px 0;
+}
+
+.index_status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px !important;
+  font-weight: 600;
+  margin-bottom: 10px !important;
+}
+
+.index_status.applied {
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+}
+
+.index_status.not_applied {
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+/* 실험 시작 버튼 */
+.run_experiment_content {
+    margin: 25px 0;
+}
+
+.run_experiment_content button {
+  padding: 14px 26px;
+  background-color: #0d9488;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(13, 148, 136, 0.2);
+  transition: all 0.2s ease;
+}
+
+.run_experiment_content button:hover {
+  background-color: #0f766e;
+  box-shadow: 0 6px 14px rgba(13, 148, 136, 0.35);
+  transform: translateY(-2px);
+}

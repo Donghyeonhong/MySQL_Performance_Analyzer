@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request
+from dotenv import load_dotenv
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from Automation import db_connection
+from Automation.main import run_experiment
 import statistics
 import json
 
@@ -37,6 +39,11 @@ experiment_list_sql = """select experiment_id, experiment_name from experiment o
 indexed_conditions_vals = 1
 
 app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
 @app.route("/")
 def index():
     conn = None
@@ -136,6 +143,15 @@ experiment_detail_info_sql = """select experiment_id, experiment_name, descripti
 
 query_info_sql = """select query_id, query_history.experiment_id, sql_text, query_registered_at from query_history where query_history.experiment_id = %s;"""
 
+index_condition_info_sql = """select query_history.query_id, index_condition.condition_id, 
+index_condition.is_indexed, condition_index.table_name, condition_index.index_name,
+condition_index.index_columns, index_condition.condition_created_at
+from query_history
+inner join index_condition on query_history.query_id = index_condition.query_id
+left join condition_index on index_condition.condition_id = condition_index.condition_id 
+where query_history.experiment_id = %s
+order by query_history.query_id, index_condition.condition_id;"""
+
 before_after_index_sql = """select experiment.experiment_id, query_history.query_id, 
 index_condition.condition_id, index_condition.is_indexed, 
 performance_log.repeat_number, performance_log.execution_time 
@@ -156,8 +172,83 @@ inner join experiment on query_history.experiment_id = experiment.experiment_id
 where experiment.experiment_id = %s and performance_log.repeat_number = 1
 order by query_history.query_id, is_indexed;"""
 
-@app.route("/experiment/<int:experiment_id>")
+insert_query_sql = """
+insert into query_history (experiment_id, sql_text, query_registered_at)
+values (%s, %s, NOW());"""
+
+insert_index_condition_sql = """
+insert into index_condition (query_id, is_indexed, condition_created_at)
+values (%s, %s, NOW());"""
+
+insert_condition_index_sql = """
+insert into condition_index (condition_id, table_name, index_name, index_columns)
+values (%s, %s, %s, %s);"""
+
+@app.route("/experiment/<int:experiment_id>", methods=["GET", "POST"])
 def experiment_detail(experiment_id):
+    if request.method == "POST":
+        form_type = request.form.get("form_type")
+
+        if form_type == "query":
+            sql_text = request.form.get("sql_text", "").strip()
+        
+
+            if sql_text:
+                conn_insert = None
+                cursor_insert = None
+
+                try:
+                    conn_insert = db_connection.get_db_connection_analysis()
+                    cursor_insert = conn_insert.cursor()
+
+                    cursor_insert.execute(insert_query_sql, (experiment_id, sql_text))
+                    conn_insert.commit()
+
+                finally:
+                    if cursor_insert is not None:
+                        cursor_insert.close()
+                    if conn_insert is not None:
+                        conn_insert.close()
+
+        elif form_type == "index_condition":
+            query_id = request.form.get("query_id")
+            is_indexed = request.form.get("is_indexed")
+            table_name = request.form.get("table_name", "").strip()
+            index_name = request.form.get("index_name", "").strip()
+            index_columns = request.form.get("index_columns", "").strip()
+
+            conn_insert = None
+            cursor_insert = None
+
+            try:
+                conn_insert = db_connection.get_db_connection_analysis()
+                cursor_insert = conn_insert.cursor()
+
+                cursor_insert.execute(insert_index_condition_sql, (int(query_id), int(is_indexed)))
+
+                condition_id = cursor_insert.lastrowid
+
+                if int(is_indexed) == 1:
+                    cursor_insert.execute(insert_condition_index_sql, 
+                    (condition_id, table_name, index_name, index_columns))
+
+                conn_insert.commit()
+
+            finally:
+                if cursor_insert is not None:
+                    cursor_insert.close()
+                if conn_insert is not None:
+                    conn_insert.close()
+
+        elif form_type == "run_experiment":
+            result = run_experiment(experiment_id)
+
+            if result:
+                flash("실험이 정상적으로 완료되었습니다.", "success")
+            else:
+                flash("실험 실행 중 오류가 발생했습니다. 터미널 로그를 확인해 주세요.", "error")
+
+        return redirect(url_for("experiment_detail", experiment_id=experiment_id))
     conn = None
     cursor = None
     try:
@@ -171,6 +262,31 @@ def experiment_detail(experiment_id):
 
         cursor.execute(query_info_sql, (experiment_detail_info_vals,))
         query_info = cursor.fetchall()
+
+        cursor.execute(index_condition_info_sql, (experiment_detail_info_vals,))
+        index_condition_info = cursor.fetchall()
+
+        grouped_index_condition_info = {}
+
+        for i in index_condition_info:
+            query_id = i[0]
+            condition_id = i[1]
+
+            if condition_id not in grouped_index_condition_info:
+                grouped_index_condition_info[condition_id] = {
+                    "query_id": query_id,
+                    "condition_id": condition_id,
+                    "is_indexed": i[2],
+                    "condition_created_at": i[6],
+                    "indexes": []
+                }
+
+            if i[2] == 1:
+                grouped_index_condition_info[condition_id]["indexes"].append({
+                    "table_name": i[3],
+                    "index_name": i[4],
+                    "index_columns": i[5]
+                })
 
         cursor.execute(before_after_index_sql, (experiment_detail_info_vals,))
         before_after_index_info = cursor.fetchall()
@@ -269,7 +385,8 @@ def experiment_detail(experiment_id):
             cursor.close()
         if conn is not None:
             conn.close()
-    return render_template("experiment_detail.html", experiment_detail_info = experiment_detail_info, query_info = query_info, result_data = result_data, explain_result_data = explain_result_data)
+    return render_template("experiment_detail.html", experiment_detail_info = experiment_detail_info, query_info = query_info, result_data = result_data, explain_result_data = explain_result_data,
+    grouped_index_condition_info = grouped_index_condition_info)
 
 experiments_info_sql = """select experiment.experiment_id, experiment.experiment_name,
 experiment.description, experiment.created_at 
@@ -292,6 +409,34 @@ def experiments():
         if conn is not None:
             conn.close()
     return render_template("experiments.html", experiments_info_data = experiments_info_data)
+
+insert_experiment_sql = """
+insert into experiment (experiment_name, description)
+values (%s, %s)"""
+
+@app.route("/experiments/add", methods=["GET", "POST"])
+def add_experiment():
+    if request.method == "POST":
+        experiment_name = request.form.get("experiment_name")
+        description = request.form.get("description")
+        vals = (experiment_name, description)
+
+        conn = None
+        cursor = None
+        try:
+            conn = db_connection.get_db_connection_analysis()
+            cursor = conn.cursor()
+    
+            cursor.execute(insert_experiment_sql, vals)
+            conn.commit()
+            new_experiment_id = cursor.lastrowid
+        finally:
+            if cursor is not None:
+                cursor.close()
+            if conn is not None:
+                conn.close()
+        return redirect(url_for("experiment_detail", experiment_id=new_experiment_id))
+    return render_template("add_experiment.html")
 
 cte_sql = """with condition_count as (
 	select index_condition.query_id, index_condition.condition_id, index_condition.is_indexed,

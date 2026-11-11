@@ -42,13 +42,106 @@
                     <h3>{{ experiment_detail_info[1] }}</h3>
                     <p>{{ experiment_detail_info[2] }}</p>
                 </div>
+                <div class="run_experiment_content">
+                    <form method="POST">
+                        <input type="hidden" name="form_type" value="run_experiment">
+                        <button type="submit">▶ Run Experiment</button>
+                    </form>
+                </div>
                 <div class="query_content">
                     <h2>SQL Query</h2>
+                    <form method="POST">
+                        <input type="hidden" name="form_type" value="query">
+                        <div class="form_group">
+                            <label for="sql_text">SQL Query</label>
+                            <textarea id="sql_text" name="sql_text" rows="6" required
+                            placeholder="실행할 SQL 쿼리를 입력하세요."></textarea>
+                        </div>
+
+                        <button type="submit">+ ADD Query</button>
+                    </form>
                     {% for i in query_info %}
                         <p>Query {{ i[0] }}</p>
                         <pre><code>{{ i[2] }}</code></pre>
                     {% endfor %}
                 </div>
+
+                <div class="index_condition_content">
+                    <h2>Index Condition</h2>
+                    <form method="POST">
+                        <input type="hidden" name="form_type" value="index_condition">
+                        <div class="form_group">
+                            <label for="query_id">대상 쿼리</label>
+                            <select id="query_id" name="query_id" required>
+                                {% for i in query_info %}
+                                    <option value="{{ i[0] }}">
+                                        Query {{ i[0] }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form_group">
+                            <label for="is_indexed">인덱스 적용 여부</label>
+                            <select id="is_indexed" name="is_indexed" required>
+                                <option value="1">인덱스 적용</option>
+                                <option value="0">인덱스 미적용</option>
+                            </select>
+                        </div>
+
+                        <div class="form_group">
+                            <label for="table_name">테이블명</label>
+                            <input type="text" id="table_name" name="table_name">
+                        </div>
+
+                        <div class="form_group">
+                            <label for="index_name">인덱스명</label>
+                            <input type="text" id="index_name" name="index_name">
+                        </div>
+
+                        <div class="form_group">
+                            <label for="index_columns">인덱스 컬럼</label>
+                            <input type="text" id="index_columns" name="index_columns">
+                        </div>
+
+                        <button type="submit">+ Add Index Condition</button>
+                    </form>
+
+                    <div class="index_condition_list">
+                        <h3>Registered Index Conditions</h3>
+
+                        {% for condition in grouped_index_condition_info.values() %}
+                        <div class="index_condition_item">
+                            <h4>
+                                Query {{ condition.query_id }} - Condition {{ condition.condition_id }}
+                            </h4>
+
+                            {% if condition.is_indexed == 1 %}
+                            <p class="index_status applied">인덱스 적용</p>
+
+                                {% for index in condition.indexes %}
+                                <p>테이블명: {{ index.table_name }}</p>
+                                <p>인덱스명: {{ index.index_name }}</p>
+                                <p>인덱스 컬럼: {{ index.index_columns }}</p>
+                                {% endfor %}
+
+                            {% else %}
+                            <p class="index_status not_applied">인덱스 미적용</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
 
                 <div class="performance_result">
                     {% for query_id, data in result_data.items() %}

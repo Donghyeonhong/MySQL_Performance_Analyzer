@@ -1,25 +1,25 @@
-from db_connection import (
+from Automation.db_connection import (
     get_db_connection_analysis,
     get_db_connection_test
 )
 
-from experiment_manager import get_experiment_conditions
+from Automation.experiment_manager import get_experiment_conditions
 
-from index_manager import (
+from Automation.index_manager import (
     validate_index_info,
     check_index,
     remove_experiment_indexes,
     apply_index_condition
 )
 
-from performance_tester import measure_query
+from Automation.performance_tester import measure_query
 
-from explain_analyzer import (
+from Automation.explain_analyzer import (
     get_explain_result,
     get_explain_analyze_result
 )
 
-from result_saver import save_performance_log
+from Automation.result_saver import save_performance_log
 
 # 실험 실행 함수
 def run_experiment(experiment_id):
@@ -222,6 +222,8 @@ def run_experiment(experiment_id):
 
         print("\n실험이 정상적으로 완료되었습니다.")
 
+        return True
+
     except Exception as e:
 
         if conn_analysis:
@@ -229,6 +231,7 @@ def run_experiment(experiment_id):
 
         print("\n실험 실행 중 오류가 발생했습니다.")
         print("오류 내용:", e)
+        return False
 
     finally:
         if (cursor_test and indexes_cleanup_needed and not indexes_cleaned):
