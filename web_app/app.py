@@ -6,6 +6,7 @@ from Automation import db_connection
 from Automation.main import run_experiment
 import statistics
 import json
+import datetime
 
 total_experiments_sql = """select count(*) from experiment;"""
 query_conditions_sql = """select count(*) from index_condition;"""
@@ -44,14 +45,39 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
+
+@app.context_processor
+def current_date():
+    current_date = datetime.datetime.now().strftime("%Y. %m. %d.")
+    system_ready = check_db_status()
+
+    return {"current_date": current_date, "system_ready": system_ready}
+
+def check_db_status():
+    analysis_conn = None
+    test_conn = None
+    try:
+        analysis_conn = db_connection.get_db_connection_analysis()
+        test_conn = db_connection.get_db_connection_test()
+        return True
+    
+    except Exception as e:
+        print(f"DB 연결 확인 실패: {e}")
+        return False
+
+    finally:
+        if analysis_conn is not None:
+            analysis_conn.close()
+        if test_conn is not None:
+            test_conn.close()
+
+
 @app.route("/")
 def index():
     conn = None
     cursor = None
+    experiment_id = request.args.get('experiment_id', type=int) or 1
     try:
-        experiment_id = request.args.get('experiment_id', type=int)
-        if experiment_id is None:
-            experiment_id = 1
         conn = db_connection.get_db_connection_analysis()
         cursor = conn.cursor()
         print("analysis_db 연결 성공")
@@ -131,6 +157,25 @@ def index():
         print(chart_data)    
         print(average_actual_time)
 
+    except Exception as e:
+        print(f"Dashboard 데이터 조회 실패: {e}")
+
+        flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
+
+        total_experiments_count = 0
+        total_conditions_count = 0
+        total_performance_tests_count = 0
+        total_indexed_conditions_count = 0
+
+        get_experiment_id_name = []
+        experiment_info = []
+        average_actual_time = []
+
+        labels = []
+        before = []
+        after = {}
+        improvement = []
+
     finally:
         
         if cursor is not None:
@@ -204,6 +249,10 @@ def experiment_detail(experiment_id):
                     cursor_insert.execute(insert_query_sql, (experiment_id, sql_text))
                     conn_insert.commit()
 
+                except Exception as e:
+                    print(f"쿼리 등록 실패: {e}")
+                    flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
+
                 finally:
                     if cursor_insert is not None:
                         cursor_insert.close()
@@ -234,6 +283,10 @@ def experiment_detail(experiment_id):
 
                 conn_insert.commit()
 
+            except Exception as e:
+                print(f"인덱스 조건 등록 실패: {e}")
+                flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
+
             finally:
                 if cursor_insert is not None:
                     cursor_insert.close()
@@ -251,6 +304,16 @@ def experiment_detail(experiment_id):
         return redirect(url_for("experiment_detail", experiment_id=experiment_id))
     conn = None
     cursor = None
+
+    experiment_detail_info = None
+    query_info = []
+    index_condition_info = []
+    grouped_index_condition_info = {}
+    before_after_index_info = []
+    explain_result_info = []
+    before_after_data = {}
+    result_data = {}
+    explain_result_data = {}
     try:
         conn = db_connection.get_db_connection_analysis()
         cursor = conn.cursor()
@@ -380,6 +443,11 @@ def experiment_detail(experiment_id):
                     }
                 explain_result_data[explain_query_id]["after"][condition_id]["explain"] = explain_data
                 explain_result_data[explain_query_id]["after"][condition_id]["explain_analyze"] = explain_analyze_data
+
+    except Exception as e:
+        print(f"실험 상세 조회 실패: {e}")
+        flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
+            
     finally:
         if cursor is not None:
             cursor.close()
@@ -397,12 +465,18 @@ order by experiment.created_at desc;"""
 def experiments():
     conn = None
     cursor = None
+    experiments_info_data = []
     try:
         conn = db_connection.get_db_connection_analysis()
         cursor = conn.cursor()
 
         cursor.execute(experiments_info_sql)
         experiments_info_data = cursor.fetchall()
+
+    except Exception as e:
+        print(f"실험 목록 조회 실패: {e}")
+        flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
+    
     finally:
         if cursor is not None:
             cursor.close()
@@ -430,6 +504,12 @@ def add_experiment():
             cursor.execute(insert_experiment_sql, vals)
             conn.commit()
             new_experiment_id = cursor.lastrowid
+
+        except Exception as e:
+            print(f"실험 추가 실패: {e}")
+            flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
+            return redirect(url_for("add_experiment"))
+        
         finally:
             if cursor is not None:
                 cursor.close()
@@ -469,20 +549,34 @@ cte_sql = """with condition_count as (
 analyzed_queries_count_sql = cte_sql + """ select count(*) from query_count;"""
 
 avg_improvement_sql = cte_sql + """ select query_history.experiment_id, query_history.query_id, index_condition.condition_id, index_condition.is_indexed, 
-avg(performance_log.execution_time) as avg_execution_time 
+avg(performance_log.execution_time) as avg_execution_time, experiment.experiment_name
 from query_count
 inner join query_history on query_count.query_id = query_history.query_id
+inner join experiment on query_history.experiment_id = experiment.experiment_id 
 inner join index_condition on query_history.query_id = index_condition.query_id
 inner join performance_log on index_condition.condition_id = performance_log.condition_id
 group by query_history.experiment_id, query_history.query_id, 
-index_condition.condition_id,
-index_condition.is_indexed; 
+index_condition.condition_id, index_condition.is_indexed, experiment.experiment_id; 
 """ 
 
 @app.route("/performance-analysis")
 def performance_analysis():
     conn = None
     cursor = None
+    total_experiments_count = 0
+    analyzed_queries_count = 0
+    avg_improvement_data = []
+
+    improvement_rates = []
+    improvement_data = {}
+    summary_data = []
+
+    avg_improvement = 0
+    best_improvement = 0
+
+    improved_queries = 0
+    regressed_queries = 0
+    no_change_queries = 0
     try:
         conn = db_connection.get_db_connection_analysis()
         cursor = conn.cursor()
@@ -505,11 +599,13 @@ def performance_analysis():
             condition_id = row[2]
             is_indexed = row[3]
             execution_time = float(row[4])
+            experiment_name = row[5]
 
             key = (experiment_id, query_id)
 
             if key not in improvement_data:
                 improvement_data[key] = {
+                    "experiment_name": experiment_name,
                     "before": None,
                     "after": []
                 }
@@ -519,11 +615,29 @@ def performance_analysis():
             else:
                 improvement_data[key]["after"].append(execution_time)
 
-        for data in improvement_data.values():
+        summary_data = []
+
+        for key, data in improvement_data.items():
             before_time = data["before"]
 
             if before_time is None or before_time == 0:
                 continue
+
+            if data["after"]:
+                after_data = data["after"]
+                after_sum = sum(after_data)
+                after_avg = after_sum / len(after_data)
+                summary_rate = ((before_time - after_avg) / before_time) * 100
+            else: 
+                continue
+
+            summary_data.append({
+                "experiment_name": data["experiment_name"],
+                "query_id": key[1],
+                "before_time": before_time,
+                "after_avg": after_avg,
+                "improvement": summary_rate
+            })
 
             for after_time in data["after"]:
                 rate = ((before_time - after_time) / before_time) * 100
@@ -536,6 +650,22 @@ def performance_analysis():
             avg_improvement = 0
             best_improvement = 0
 
+        improved_queries = 0
+        regressed_queries = 0
+        no_change_queries = 0
+
+        for a in summary_data:
+            improvement = round(a["improvement"], 2)
+            if improvement > 0:
+                improved_queries += 1
+            elif improvement == 0:
+                no_change_queries += 1
+            else:
+                regressed_queries += 1
+
+    except Exception as e:
+        print(f"성능 분석 데이터 조회 실패: {e}")
+        flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
 
     finally:
         if cursor is not None:
@@ -547,7 +677,9 @@ def performance_analysis():
     total_experiments_count = total_experiments_count, 
     analyzed_queries_count = analyzed_queries_count, 
     avg_improvement = avg_improvement, best_improvement = best_improvement, 
-    avg_improvement_data = avg_improvement_data)
+    avg_improvement_data = avg_improvement_data, summary_data = summary_data,
+    improved_queries = improved_queries, regressed_queries = regressed_queries,
+    no_change_queries = no_change_queries)
 
 if __name__ == "__main__":
     app.run(debug=True)

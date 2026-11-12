@@ -17,11 +17,6 @@
                 <a href="{{ url_for('experiments') }}" class="active">Experiments</a>
                 <a href="{{ url_for('performance_analysis') }}">Performance Analysis</a>
             </div>
-
-            <div class="system_menu">
-                <p>SYSTEM</p>
-                <a href="#">Settings</a>
-            </div>
         </div>
 
         <div class="content">
@@ -32,11 +27,24 @@
                 </div>
 
                 <div class="header_info">
-                    <p>2026. 11. 04.</p>
-                    <span>● System Ready</span>
+                    <p>{{ current_date }}</p>
+                    {% if system_ready %}
+                    <span class="system_ready">● System Ready</span>
+                    {% else %}
+                    <span class="system_error">● Database Disconnected</span>
+                    {% endif %}
                 </div>
             </div>
             <div class="main_content">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
                 <div class="experiment_detail_content">
                     <h2>Experiment Detail Information</h2>
                     <h3>{{ experiment_detail_info[1] }}</h3>

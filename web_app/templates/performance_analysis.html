@@ -17,11 +17,6 @@
                 <a href="{{ url_for('experiments') }}">Experiments</a>
                 <a href="{{ url_for('performance_analysis') }}" class="active">Performance Analysis</a>
             </div>
-
-            <div class="system_menu">
-                <p>SYSTEM</p>
-                <a href="#">Settings</a>
-            </div>
         </div>
 
         <div class="content">
@@ -32,12 +27,25 @@
                 </div>
 
                 <div class="header_info">
-                    <p>2026. 11. 04.</p>
-                    <span>● System Ready</span>
+                    <p>{{ current_date }}</p>
+                    {% if system_ready %}
+                    <span class="system_ready">● System Ready</span>
+                    {% else %}
+                    <span class="system_error">● Database Disconnected</span>
+                    {% endif %}
                 </div>
             </div>
 
             <div class="main_content">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
                 <div class="analysis_overview">
                     <div class="analysis_kpi_container">
                         <div class="analysis_kpi_card total">
@@ -92,13 +100,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for i in ex %}
+                            {% for i in summary_data %}
                                 <tr>
-                                    <td>실험이름</td>
-                                    <td>쿼리 ID</td>
-                                    <td>인덱스 적용 전 평균</td>
-                                    <td>인덱스 적용 후 평균</td>
-                                    <td>성능 개선율</td>
+                                    <td>{{ i["experiment_name"] }}</td>
+                                    <td>{{ i["query_id"] }}</td>
+                                    <td>{{ "%.2f"|format(i["before_time"]) }}</td>
+                                    <td>{{ "%.2f"|format(i["after_avg"]) }}</td>
+                                    <td>{{ "%.2f"|format(i["improvement"]) }}%</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -114,19 +122,19 @@
                     <div class="analysis_kpi_container">
                         <div class="analysis_kpi_card improved">
                             <p>Improved Queries</p>
-                            <h3>3</h3>
+                            <h3>{{ improved_queries }}</h3>
                             <span>인덱스 적용 후 빨라진 쿼리 수</span>
                         </div>
 
                         <div class="analysis_kpi_card regressed">
                             <p>Regressed Queries</p>
-                            <h3>0</h3>
+                            <h3>{{ regressed_queries }}</h3>
                             <span>인덱스 적용 후 느려진 쿼리 수</span>
                         </div>
 
                         <div class="analysis_kpi_card no_change">
                             <p>No Change Queries</p>
-                            <h3>1</h3>
+                            <h3>{{ no_change_queries }}</h3>
                             <span>실행 시간이 동일한 쿼리 수</span>
                         </div>
                     </div>
