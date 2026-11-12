@@ -682,4 +682,4 @@ def performance_analysis():
     no_change_queries = no_change_queries)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.getenv("FLASK_DEBUG", "False").lower() == "true")
