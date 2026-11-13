@@ -35,6 +35,13 @@ where experiment.experiment_id = %s
 group by experiment.experiment_id, query_history.query_id, index_condition.condition_id, index_condition.is_indexed; 
 """ 
 
+condition_index_sql = """
+select condition_id, 
+group_concat(index_name order by index_id SEPARATOR ' + ')
+from condition_index
+group by condition_id;
+"""
+
 experiment_list_sql = """select experiment_id, experiment_name from experiment order by created_at desc;"""
 
 indexed_conditions_vals = 1
@@ -103,6 +110,14 @@ def index():
         cursor.execute(average_actual_time_sql, (experiment_id,))
         average_actual_time = cursor.fetchall()
 
+        cursor.execute(condition_index_sql)
+        condition_index_data = cursor.fetchall()
+
+        index_names = {}
+
+        for row in condition_index_data:
+            index_names[row[0]] = row[1]
+
         chart_data = {}
         
         for row in average_actual_time:
@@ -125,21 +140,50 @@ def index():
         before = []
         after = {}
         improvement = []
-        condition_ids = set()
-
-        for data in chart_data.values():
-            before.append(float(data['before']))
-            for e in data['after']:
-                condition_ids.add(e["condition_id"])
-                
-        for condition_id in condition_ids:
-            after[condition_id] = [None] * len(labels)
-
-        for query_index, data in enumerate(chart_data.values()):
-            for e in data["after"]:
-                after[e["condition_id"]][query_index] = float(e["execution_time"])
 
         for query_id, data in chart_data.items():
+
+            before.append(float(data["before"]))
+
+            after[query_id] = []
+
+            for e in data["after"]:
+                after[query_id].append({
+                    "condition_id": e["condition_id"],
+                    "execution_time": float(e["execution_time"]),
+                    "index_name": index_names.get(e["condition_id"], "Unknown")
+                })
+
+        # for data in chart_data.values():
+        #     before.append(float(data['before']))
+        #     for e in data['after']:
+        #         condition_ids.add(e["condition_id"])
+                
+        # for condition_id in condition_ids:
+        #     after[condition_id] = [None] * len(labels)
+
+        # for query_index, data in enumerate(chart_data.values()):
+        #     for e in data["after"]:
+        #         after[e["condition_id"]][query_index] = float(e["execution_time"])
+
+
+        chart_labels = []
+        chart_values = []
+        chart_types = []
+
+
+        for query_id, data in chart_data.items():
+            # 인덱스 미적용 데이터
+            chart_labels.append(query_id + "\n미적용")
+            chart_values.append(float(data["before"]))
+            chart_types.append("before")
+
+            # 해당 쿼리에 적용된 인덱스 데이터
+            for e in after[query_id]:
+                chart_labels.append(query_id + "\n" + e["index_name"])
+                chart_values.append(e["execution_time"])
+                chart_types.append("after")
+
             before_time = float(data["before"])
             for t in data["after"]:
                 condition_id = t["condition_id"]
@@ -154,8 +198,6 @@ def index():
                     "condition_id": condition_id,
                     "rate": rate
                 })
-        print(chart_data)    
-        print(average_actual_time)
 
     except Exception as e:
         print(f"Dashboard 데이터 조회 실패: {e}")
@@ -182,7 +224,7 @@ def index():
             cursor.close()
         if conn is not None:
             conn.close()
-    return render_template("index.html", total_experiments_count = total_experiments_count, total_conditions_count = total_conditions_count, total_performance_tests_count = total_performance_tests_count, total_indexed_conditions_count = total_indexed_conditions_count, experiment_info=experiment_info, average_actual_time = average_actual_time, labels =labels, before = before, after = after, improvement = improvement, get_experiment_id_name = get_experiment_id_name, experiment_id = experiment_id)
+    return render_template("index.html", total_experiments_count = total_experiments_count, total_conditions_count = total_conditions_count, total_performance_tests_count = total_performance_tests_count, total_indexed_conditions_count = total_indexed_conditions_count, experiment_info=experiment_info, average_actual_time = average_actual_time, labels =labels, before = before, after = after, improvement = improvement, get_experiment_id_name = get_experiment_id_name, experiment_id = experiment_id, chart_labels=chart_labels, chart_values=chart_values, chart_types=chart_types)
 
 experiment_detail_info_sql = """select experiment_id, experiment_name, description from experiment where experiment_id = %s;"""
 
@@ -590,6 +632,15 @@ def performance_analysis():
         cursor.execute(avg_improvement_sql)
         avg_improvement_data = cursor.fetchall()
 
+        cursor.execute(condition_index_sql)
+        condition_index_data = cursor.fetchall()
+
+        index_names = {}
+        for row in condition_index_data:
+            index_names[row[0]] = row[1]
+
+        print(index_names)
+
         improvement_rates = []
         improvement_data = {}
 
@@ -613,9 +664,32 @@ def performance_analysis():
             if is_indexed == 0:
                 improvement_data[key]["before"] = execution_time
             else:
-                improvement_data[key]["after"].append(execution_time)
+                improvement_data[key]["after"].append({
+                    "condition_id": condition_id,
+                    "execution_time": execution_time,
+                    "index_name": index_names.get(condition_id, "Unknown")
+                })
+
+            print(improvement_data)
+            # key = (experiment_id, query_id)
+
+            # if key not in improvement_data:
+            #     improvement_data[key] = {
+            #         "experiment_name": experiment_name,
+            #         "before": None,
+            #         "after": []
+            #     }
+
+            # if is_indexed == 0:
+            #     improvement_data[key]["before"] = execution_time
+            # else:
+            #     improvement_data[key]["after"].append(execution_time)
 
         summary_data = []
+
+        chart_labels = []
+        chart_values = []
+        chart_types = []
 
         for key, data in improvement_data.items():
             before_time = data["before"]
@@ -623,12 +697,43 @@ def performance_analysis():
             if before_time is None or before_time == 0:
                 continue
 
+            # 인덱스 미적용 데이터
+            experiment_name = data["experiment_name"]
+            query_id = key[1]
+
+            chart_labels.append(
+                experiment_name + "\nQuery " + str(query_id) + "\n미적용"
+            )
+            chart_values.append(before_time)
+            chart_types.append("before")
+
+            # 인덱스 적용 데이터
+            for item in data["after"]:
+                chart_labels.append(
+                    experiment_name + "\nQuery " + str(query_id) + "\n" + item["index_name"]
+                )
+                chart_values.append(item["execution_time"])
+                chart_types.append("after")
+
+
+            # if data["after"]:
+            #     after_data = data["after"]
+            #     after_sum = sum(after_data)
+            #     after_avg = after_sum / len(after_data)
+            #     summary_rate = ((before_time - after_avg) / before_time) * 100
+            # else: 
+            #     continue
             if data["after"]:
                 after_data = data["after"]
-                after_sum = sum(after_data)
+
+                after_sum = sum(
+                    item["execution_time"] for item in after_data
+                )
+
                 after_avg = after_sum / len(after_data)
+
                 summary_rate = ((before_time - after_avg) / before_time) * 100
-            else: 
+            else:
                 continue
 
             summary_data.append({
@@ -639,9 +744,19 @@ def performance_analysis():
                 "improvement": summary_rate
             })
 
-            for after_time in data["after"]:
+            for after_item in data["after"]:
+                after_time = after_item["execution_time"]
+
                 rate = ((before_time - after_time) / before_time) * 100
                 improvement_rates.append(rate)
+
+            # for after_time in data["after"]:
+            #     rate = ((before_time - after_time) / before_time) * 100
+            #     improvement_rates.append(rate)
+
+        print("차트 라벨:", chart_labels)
+        print("차트 실행 시간:", chart_values)
+        print("차트 조건:", chart_types)
 
         if improvement_rates:
             avg_improvement = sum(improvement_rates) / len(improvement_rates)
@@ -678,8 +793,8 @@ def performance_analysis():
     analyzed_queries_count = analyzed_queries_count, 
     avg_improvement = avg_improvement, best_improvement = best_improvement, 
     avg_improvement_data = avg_improvement_data, summary_data = summary_data,
-    improved_queries = improved_queries, regressed_queries = regressed_queries,
-    no_change_queries = no_change_queries)
+    improved_queries = improved_queries, regressed_queries = regressed_queries, no_change_queries = no_change_queries,
+    chart_labels=chart_labels, chart_values=chart_values, chart_types=chart_types)
 
 if __name__ == "__main__":
     app.run(debug=os.getenv("FLASK_DEBUG", "False").lower() == "true")

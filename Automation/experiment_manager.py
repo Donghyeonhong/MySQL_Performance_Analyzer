@@ -9,7 +9,8 @@ def get_experiment_conditions(cursor, experiment_id):
                 condition_index.table_name,
                 condition_index.index_name,
                 condition_index.index_columns,
-                index_condition.condition_id
+                index_condition.condition_id,
+                query_history.query_id
             FROM experiment
             INNER JOIN query_history
                 ON experiment.experiment_id = query_history.experiment_id

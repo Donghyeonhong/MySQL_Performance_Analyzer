@@ -160,7 +160,11 @@
       window.chartData = {
         labels: {{ labels | tojson }},
         before: {{ before | tojson }},
-        after: {{ after | tojson }}
+        after: {{ after | tojson }},
+
+        chart_labels: {{ chart_labels | tojson }},
+        chart_values: {{ chart_values | tojson }},
+        chart_types: {{ chart_types | tojson }}
       };
     </script>
     <script src="{{ url_for('static', filename='chart.js') }}"></script>

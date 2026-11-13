@@ -3,18 +3,6 @@ console.log(window.chartData);
 const chartDom = document.getElementById("performance_chart");
 const myChart = echarts.init(chartDom);
 
-const afterSeries = Object.entries(window.chartData.after).map(
-  ([conditionID, values]) => ({
-    name: `Condition ${conditionID}`,
-    type: "bar",
-    data: values,
-    itemStyle: {
-      color: "#2563EB",
-      borderRadius: [5, 5, 0, 0]
-    }
-  })
-);
-
 const option = {
   title: {
     text: "Performance Comparison",
@@ -34,15 +22,18 @@ const option = {
   },
 
   tooltip: {
-    trigger: "axis",
-    axisPointer: {
-      type: "shadow",
-    },
+    trigger: "item",
+    formatter: function(params) {
+      return `
+        <strong>${params.name}</strong><br/>
+        Execution Time: ${params.value} ms
+      `;
+    }
   },
 
   xAxis: {
     type: "category",
-    data: window.chartData.labels,
+    data: window.chartData.chart_labels,
   },
 
   yAxis: {
@@ -52,15 +43,18 @@ const option = {
 
   series: [
     {
-      name: "Before Index",
+      name: "Execution Time",
       type: "bar",
-      data: window.chartData.before,
-      itemStyle: {
-        color: "#38BDF8",
-        borderRadius: [5, 5, 0, 0]
-      }
-    },
-    ...afterSeries
+      data: window.chartData.chart_values.map((value, index) => ({
+        value: value,
+        itemStyle: {
+          color: window.chartData.chart_types[index] === "before"
+            ? "#38BDF8"
+            : "#2563EB",
+          borderRadius: [5, 5, 0, 0]
+        }
+      })),
+    }
   ],
 };
 

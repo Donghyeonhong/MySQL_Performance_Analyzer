@@ -48,49 +48,59 @@ def run_experiment(experiment_id):
         if not result_analysis:
             raise ValueError("해당 실험 번호가 존재하지 않습니다.")
 
-        # condition_id를 기준으로 조회 결과 그룹화
-        condition_groups = {}
+        # query_id를 기준으로 조회 결과 그룹화
+        query_groups = {}
 
         for row in result_analysis:
             condition_id = row[7]
+            query_id = row[8]
 
-            if condition_id not in condition_groups:
-                condition_groups[condition_id] = []
+            if query_id not in query_groups:
+                query_groups[query_id] = {}
 
-            condition_groups[condition_id].append(row)
+            if condition_id not in query_groups[query_id]:
+                query_groups[query_id][condition_id] = []
 
-        # 인덱스 미적용 조건과 적용 조건 분리
-        baseline_conditions = [  # 미적용 조건 행 저장
-            rows for rows in condition_groups.values()
-            if rows[0][3] == 0
-        ]
+            query_groups[query_id][condition_id].append(row)
 
-        indexed_conditions = [   # 적용 조건 행 저장
-            rows for rows in condition_groups.values()
-            if rows[0][3] == 1
-        ]
+        indexed_condition_rows = []
 
-        if len(baseline_conditions) != 1:
-            raise ValueError(
-                "인덱스 미적용 조건은 정확히 1개여야 합니다."
+        for query_id, condition_groups in query_groups.items():
+            
+
+            # 인덱스 미적용 조건과 적용 조건 분리
+            baseline_conditions = [  # 미적용 조건 행 저장
+                rows for rows in condition_groups.values()
+                if rows[0][3] == 0
+            ]
+
+            indexed_conditions = [   # 적용 조건 행 저장
+                rows for rows in condition_groups.values()
+                if rows[0][3] == 1
+            ]
+            print("\n쿼리 ID:", query_id)
+            print("미적용 조건 수:", len(baseline_conditions))
+            print("적용 조건 수:", len(indexed_conditions))
+
+            # 쿼리별 조건 개수 검증
+            if len(baseline_conditions) != 1:
+                raise ValueError(
+                    f"쿼리 ID {query_id}: 인덱스 미적용 조건은 정확히 1개여야 합니다."
+                )
+
+            if not indexed_conditions:
+                raise ValueError(
+                    f"쿼리 ID {query_id}: 인덱스 적용 조건이 등록되어 있지 않습니다."
+                )
+
+            indexed_condition_rows.extend(
+                row
+                for group in indexed_conditions
+                for row in group
             )
-
-        if not indexed_conditions:
-            raise ValueError(
-                "인덱스 적용 조건이 등록되어 있지 않습니다."
-            )
-        indexed_condition_rows = [
-            row
-            for group in indexed_conditions
-            for row in group
-        ]
 
         # 현재는 실험 하나당 SQL문 하나를 사용하는 구조
-        sql_text = result_analysis[0][2]
         experiment_name = result_analysis[0][1]
-
-        if any(e[2] != sql_text for e in result_analysis):
-            raise ValueError("실험 조건들의 SQL문이 서로 다릅니다.")
 
         # 모든 인덱스 정보 검증
         for condition in indexed_condition_rows:
@@ -135,7 +145,11 @@ def run_experiment(experiment_id):
 
         # 이전 측정 기록 삭제
         # 현재 구조에서는 재실행 시 이전 기록을 교체함
-        condition_ids = list(condition_groups.keys())
+        condition_ids = [
+            condition_id
+            for condition_groups in query_groups.values()
+            for condition_id in condition_groups.keys()
+        ]
 
         placeholders = ", ".join(["%s"] * len(condition_ids))
         
@@ -146,69 +160,72 @@ def run_experiment(experiment_id):
 
         cursor_analysis.execute(delete_sql, tuple(condition_ids))
 
-        # 각 조건별 측정
-        for condition_rows in condition_groups.values():
+        for query_id, condition_groups in query_groups.items():
+            # 현재 쿼리의 SQL문 가져오기
+            sql_text = next(iter(condition_groups.values()))[0][2]
+            # 각 조건별 측정
+            for condition_rows in condition_groups.values():
 
-            # 조건 그룹의 첫 번째 행에서 공통 정보 가져오기
-            condition = condition_rows[0]
+                # 조건 그룹의 첫 번째 행에서 공통 정보 가져오기
+                condition = condition_rows[0]
 
-            is_indexed = condition[3]
-            condition_id = condition[7]
+                is_indexed = condition[3]
+                condition_id = condition[7]
 
-            print("\n-----------------------------")
-            print("인덱스 적용 여부:", is_indexed)
+                print("\n-----------------------------")
+                print("인덱스 적용 여부:", is_indexed)
 
-            if is_indexed == 1:
-                # 현재 조건에 등록된 모든 인덱스 정보 출력
-                for index_row in condition_rows:
-                    print("인덱스 이름:", index_row[5])
-                    print("인덱스 컬럼:", index_row[6])
+                if is_indexed == 1:
+                    # 현재 조건에 등록된 모든 인덱스 정보 출력
+                    for index_row in condition_rows:
+                        print("인덱스 이름:", index_row[5])
+                        print("인덱스 컬럼:", index_row[6])
 
-            # 인덱스 정리가 필요할 수 있으므로 먼저 설정
-            indexes_cleanup_needed = True
+                # 인덱스 정리가 필요할 수 있으므로 먼저 설정
+                indexes_cleanup_needed = True
 
-            # 이전 실험 조건의 인덱스 전부 제거
-            remove_experiment_indexes(
-                cursor_test,
-                indexed_condition_rows
-            )
+                # 이전 실험 조건의 인덱스 전부 제거
+                remove_experiment_indexes(
+                    cursor_test,
+                    indexed_condition_rows
+                )
 
-            # 현재 조건에 필요한 인덱스만 적용
-            apply_index_condition(
-                cursor_test,
-                condition_rows
-            )
+                # 현재 조건에 필요한 인덱스만 적용
+                apply_index_condition(
+                    cursor_test,
+                    condition_rows
+                )
 
-            # EXPLAIN 결과 조회
-            explain_result = get_explain_result(
-                cursor_test,
-                sql_text
-            )
+                # EXPLAIN 결과 조회
+                explain_result = get_explain_result(
+                    cursor_test,
+                    sql_text
+                )
 
-            # EXPLAIN ANALYZE 결과 조회
-            explain_analyze_result = get_explain_analyze_result(
-                cursor_test,
-                sql_text
-            )
+                # EXPLAIN ANALYZE 결과 조회
+                explain_analyze_result = get_explain_analyze_result(
+                    cursor_test,
+                    sql_text
+                )
 
-            # 실행 시간 측정
-            total_time_list, average_time, median_time = measure_query(
-                cursor_test,
-                sql_text
-            )
+                # 실행 시간 측정
+                total_time_list, average_time, median_time = measure_query(
+                    cursor_test,
+                    sql_text
+                )
 
-            # 측정 결과 저장
-            save_performance_log(
-                cursor_analysis,
-                condition_id,
-                total_time_list,
-                explain_result,
-                explain_analyze_result
-            )
+                # 측정 결과 저장
+                save_performance_log(
+                    cursor_analysis,
+                    condition_id,
+                    total_time_list,
+                    explain_result,
+                    explain_analyze_result
+                )
 
-            print("측정 시간:", total_time_list)
-            print("평균:", round(average_time, 3), "ms")
-            print("중앙값:", round(median_time, 3), "ms")
+                print("측정 시간:", total_time_list)
+                print("평균:", round(average_time, 3), "ms")
+                print("중앙값:", round(median_time, 3), "ms")
 
         # 모든 측정 결과 저장
         remove_experiment_indexes(
