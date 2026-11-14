@@ -98,6 +98,28 @@
                         </div>
 
                         <div class="form_group">
+                            <label for="condition_type">조건 등록 방식</label>
+                            <select id="condition_type" name="condition_type" required>
+                                <option value="new">새로운 조건 생성</option>
+                                <option value="existing">기존 조건에 인덱스 추가</option>
+                            </select>
+                        </div>
+
+                        <div class="form_group" id="existing_condition_group">
+                            <label for="condition_id">기존 조건 선택</label>
+                            <select id="condition_id" name="condition_id">
+                                <option value="" disabled selected>조건을 선택하세요</option>
+                                {% for condition_id, condition in grouped_index_condition_info.items() %}
+                                    {% if condition["is_indexed"] == 1 %}
+                                        <option value="{{ condition_id }}" data-query-id="{{ condition['query_id'] }}">
+                                            Condition {{ condition_id }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form_group">
                             <label for="table_name">테이블명</label>
                             <input type="text" id="table_name" name="table_name">
                         </div>
@@ -369,5 +391,51 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const querySelect = document.getElementById("query_id");
+            const conditionType = document.getElementById("condition_type");
+            const conditionGroup = document.getElementById("existing_condition_group");
+            const conditionSelect = document.getElementById("condition_id");
+
+            function updateConditionList() {
+                const selectedQuery = querySelect.value;
+                let firstOption = null;
+
+                Array.from(conditionSelect.options).forEach(option => {
+                    if (option.value === "") return;
+
+                    const isMatched = option.dataset.queryId === selectedQuery;
+
+                    option.hidden = !isMatched;
+                    option.disabled = !isMatched;
+
+                    if (isMatched && firstOption === null) {
+                        firstOption = option;
+                    }
+                });
+
+                conditionSelect.value = firstOption ? firstOption.value : "";
+            }
+
+            function updateConditionType() {
+                const isExisting = conditionType.value === "existing";
+
+                conditionGroup.style.display = isExisting ? "block" : "none";
+                conditionSelect.required = isExisting;
+
+                if (isExisting) {
+                    updateConditionList();
+                }
+            }
+
+            querySelect.addEventListener("change", updateConditionList);
+            conditionType.addEventListener("change", updateConditionType);
+
+            updateConditionType();
+            updateConditionList();
+        });
+    </script>
 </body>
 </html>

@@ -271,6 +271,17 @@ insert_condition_index_sql = """
 insert into condition_index (condition_id, table_name, index_name, index_columns)
 values (%s, %s, %s, %s);"""
 
+check_existing_condition_sql = """
+select index_condition.condition_id
+from index_condition
+inner join query_history
+on index_condition.query_id = query_history.query_id
+where index_condition.condition_id = %s
+and index_condition.query_id = %s
+and query_history.experiment_id = %s
+and index_condition.is_indexed = 1;
+"""
+
 @app.route("/experiment/<int:experiment_id>", methods=["GET", "POST"])
 def experiment_detail(experiment_id):
     if request.method == "POST":
@@ -304,6 +315,8 @@ def experiment_detail(experiment_id):
         elif form_type == "index_condition":
             query_id = request.form.get("query_id")
             is_indexed = request.form.get("is_indexed")
+            condition_type = request.form.get("condition_type")
+            condition_id = request.form.get("condition_id")
             table_name = request.form.get("table_name", "").strip()
             index_name = request.form.get("index_name", "").strip()
             index_columns = request.form.get("index_columns", "").strip()
@@ -315,9 +328,19 @@ def experiment_detail(experiment_id):
                 conn_insert = db_connection.get_db_connection_analysis()
                 cursor_insert = conn_insert.cursor()
 
-                cursor_insert.execute(insert_index_condition_sql, (int(query_id), int(is_indexed)))
+                if condition_type == "new":
+                    cursor_insert.execute(insert_index_condition_sql, (int(query_id), int(is_indexed)))
+                    condition_id = cursor_insert.lastrowid
+                else:
+                    condition_id = int(condition_id)
+                    query_id = int(query_id)
 
-                condition_id = cursor_insert.lastrowid
+                    cursor_insert.execute(check_existing_condition_sql, (condition_id, query_id, experiment_id))
+
+                    check_condition_id = cursor_insert.fetchone()
+
+                    if check_condition_id is None:
+                        raise ValueError("유효하지 않은 기존 인덱스 조건입니다.")
 
                 if int(is_indexed) == 1:
                     cursor_insert.execute(insert_condition_index_sql, 
@@ -327,7 +350,10 @@ def experiment_detail(experiment_id):
 
             except Exception as e:
                 print(f"인덱스 조건 등록 실패: {e}")
+                if conn_insert is not None:
+                    conn_insert.rollback()
                 flash("데이터베이스 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
+                
 
             finally:
                 if cursor_insert is not None:
