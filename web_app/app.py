@@ -247,7 +247,7 @@ inner join index_condition on performance_log.condition_id = index_condition.con
 inner join query_history on index_condition.query_id = query_history.query_id
 inner join experiment on query_history.experiment_id = experiment.experiment_id
 where experiment.experiment_id = %s 
-order by query_history.query_id, is_indexed, repeat_number;"""
+order by query_history.query_id, index_condition.condition_id, performance_log.repeat_number;"""
 
 explain_result_sql = """select experiment.experiment_id, query_history.query_id, 
 index_condition.condition_id, index_condition.is_indexed, 
